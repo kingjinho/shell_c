@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <_stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 //read line
 #define LSH_RL_BUFSIZE 1024
@@ -47,13 +49,14 @@ char **lsh_split_line(char *line) {
     int buf_size = LSH_TOK_BUFSIZE;
     int position = 0;
     char **tokens = malloc(buf_size * sizeof(char *));
+    char *token;
 
     if (!tokens) {
         fprintf(stderr, "lsh: allocation error\n");
         exit(EXIT_FAILURE);
     }
 
-    char *token = strtok(line, LSH_TOK_DELIM);
+    token = strtok(line, LSH_TOK_DELIM);
     while (token != NULL) {
         tokens[position] = token;
         position++;
@@ -64,7 +67,6 @@ char **lsh_split_line(char *line) {
             if (!tokens) {
                 fprintf(stderr, "lsh: allocation error\n");
                 exit(EXIT_FAILURE);
-
             }
         }
         token = strtok(NULL, LSH_TOK_DELIM);
@@ -73,7 +75,36 @@ char **lsh_split_line(char *line) {
     return tokens;
 }
 
-static int lsh_execute(char **args) {
+// exec, wait
+int lsh_launch(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    // fork process
+    // two processes running concurrently
+    pid = fork();
+    if (pid == 0) {
+        //child process
+        if (execvp(args[0], args) == -1) {
+            perror("lsh");
+        }
+        exit(EXIT_FAILURE);
+    }
+    if (pid < 0) {
+        //error forking
+        perror("lsh");
+    } else {
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
+    }
+
+    return 1;
+}
+
+// start the process
+int lsh_execute(char **args) {
     return 0;
 }
 
